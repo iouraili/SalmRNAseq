@@ -1,2 +1,2 @@
 # SalmRNAseq
-A pipeline for rapid and accurate transcript quantification for PE RNAseq samples with UMIs using Salmon
+A pipeline for rapid and accurate transcript quantification for PE bulk-RNAseq samples with UMIs using Salmon
