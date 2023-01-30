@@ -1,30 +1,63 @@
 configfile: "config_files/config.yaml"
 
 DATASET = config["dataset"]
-out_dir = config["output_dir]
+out_dir = config["output_dir"]
 salmon_index = config["salmon_index"]
 salmon_libtype = config["salmon_libtype"]
+UMIs = config["UMIs"]
+umi_length = config["umi_length"]
+umi_location = config["umi_location"]
 
-(SAMPLES,READS,) = glob_wildcards(DATASET+"/{sample}_{read}.fastq.gz")
+(SAMPLES,READS,) = glob_wildcards(DATASET+"/{sample}_{read}_001.fastq.gz")
 
 rule all:
 	input:
-		expand(out_dir+"/fastp_filtered_samples/filtered_{sample}_R1.fastq.gz", sample=SAMPLES)
-rule fastp:
-	input:
-		r1 = DATASET+"/{sample}_R1.fastq.gz,
-		r2 = DATASET+"/{sample}_R2.fastq.gz
-	output:
-		r1 = out_dir+"/fastp_filtered_samples/filtered_{sample}_R1.fastq.gz,
-		r2 = out_dir+"/fastp_filtered_samples/filtered_{sample}_R2.fastq.gz
+		#expand(out_dir+"/fastp_filtered_samples/filtered_{sample}_R1.fastq.gz", sample=SAMPLES),
+		expand(out_dir+"/salmon_results/{sample}_salmon_transcripts_quant/quant.sf", sample=SAMPLES)
+
+
+if UMIs == "no-UMIs":
+	rule fastp_no_UMIs:
+		input:
+			r1 = DATASET+"/{sample}_R1_001.fastq.gz",
+			r2 = DATASET+"/{sample}_R2_001.fastq.gz"
+		output:
+			r1 = out_dir+"/fastp_filtered_samples/{sample}/filtered_{sample}_R1.fastq.gz",
+			r2 = out_dir+"/fastp_filtered_samples/{sample}/filtered_{sample}_R2.fastq.gz",
+			json = out_dir+"/fastp_filtered_samples/{sample}/{sample}.fastp.json",
+			html = out_dir+"/fastp_filtered_samples/{sample}/{sample}.fastp.html"
+		shell:
+			'''
+			fastp -i {input.r1} -I {input.r2} -o {output.r1} -O {output.r2} --detect_adapter_for_pe --json {output.json} --html {output.html}
+			'''
+elif UMIs == "with-UMIs":
+	rule fastp_with_UMIs:
+		input:
+			r1 = DATASET+"/{sample}_R1.fastq.gz",
+			r2 = DATASET+"/{sample}_R2.fastq.gz"
+		params:
+			umi_len = umi_length,
+			umi_loc = umi_location
+		output:
+			r1 = out_dir+"/fastp_filtered_samples/{sample}/filtered_{sample}_R1.fastq.gz",
+			r2 = out_dir+"/fastp_filtered_samples/{sample}/filtered_{sample}_R2.fastq.gz",
+			json = out_dir+"/fastp_filtered_samples/{sample}/{sample}.fastp.json",
+			html = out_dir+"/fastp_filtered_samples/{sample}/{sample}.fastp.html"
+		shell:
+			'''
+			fastp --umi --umi_loc {params.umi_loc} --umi_len {params.umi_len} --umi_skip 1 --umi_prefix "UMI" -D -i {input.r1} -I {input.r2} -o {output.r1} -O {output.r2} --detect_adapter_for_pe --json {output.json} --html {output.html} 
+			'''
+else:
+	print("Not valid UMI option. Valid options: no-UMIs, with-UMIs. Exiting.")
+	exit()
 
 rule salmon:
 	input:
-		r1 = out_dir+"/fastp_filtered_samples/filtered_{sample}_R1.fastq.gz,
-		r2 = out_dir+"/fastp_filtered_samples/filtered_{sample}_R2.fastq.gz
+		r1 = out_dir+"/fastp_filtered_samples/{sample}/filtered_{sample}_R1.fastq.gz",
+		r2 = out_dir+"/fastp_filtered_samples/{sample}/filtered_{sample}_R2.fastq.gz"
 	params:
 		salmon_index = salmon_index,
-		salmon_results_dir = out_dir+"/salmon_results/{sample}_salmon_transcripts_quant"
+		salmon_results_dir = out_dir+"/salmon_results/{sample}_salmon_transcripts_quant",
 		libtype = salmon_libtype
 	threads: 1
 	resources:

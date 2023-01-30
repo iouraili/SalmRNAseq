@@ -1,0 +1,7 @@
+dataset: "data/"
+output_dir: "results/"
+salmon_index: "resources/"
+salmon_libtype: "A"
+UMIs: "no-UMIs"
+umi_length: 6
+umi_location: "per_read"
